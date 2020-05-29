@@ -13,6 +13,16 @@ installIfMissing () {
 		fi
 	fi
 }
+sayAndDo () {
+        echo $@
+        eval $@
+        if [ $? -ne 0 ]
+        then
+                echo "ERROR: command failed!"
+                exit 1
+        fi
+}
+
 WORKINGDIR=/usr/local/src
 installIfMissing toilet
 toilet --metal -f smblock -W "Calypso-OpenBTS"
@@ -53,7 +63,7 @@ do
 		installIfMissing libmail-sendmail-perl
 		installIfMissing libncurses5-dev
 		installIfMissing libsys-hostname-long-perl
-		
+		installIfMissing aptitude
 		installIfMissing dh-apparmor
 		installIfMissing dpkg-dev 
 		
@@ -84,15 +94,24 @@ do
 		installIfMissing libsrtp-dev
 		installIfMissing gcc-4.9
 		installIfMissing g++-4.9
+		installIfMissing gcc-4.8
+		installIfMissing g++-4.8
 		#apt install gcc-4.9 g++-4.9
 		#installIfMissing libstdc++6-4.7-dev 
 		installIfMissing libunistring0
 		#installIfMissing dh-translations
 		installIfMissing python-scour
 		installIfMissing python-zmq
+		installIfMissing libreadline6
 		sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.9 49 --slave /usr/bin/g++ g++ /usr/bin/g++-4.9
+		sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 48 --slave /usr/bin/g++ g++ /usr/bin/g++-4.8
 		#sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 90 --slave /usr/bin/g++ g++ /usr/bin/g++-9
-		update-alternatives --config gcc # update-alternatives --config g++
+		#sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-4.8 48 
+		#sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.9 49
+		#sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-4.8 48  
+
+		update-alternatives --config gcc 
+		update-alternatives --config g++
 		echo -e "🐍 Switch back to Kali-Linux Repository"
 		sed -i  's/^\([^#]\)/#\1/g' /etc/apt/sources.list
 		echo "deb http://http.kali.org/kali kali-rolling main non-free contrib" >> /etc/apt/sources.list
@@ -124,6 +143,9 @@ do
 		sed -i '151 s/^/#/' $WORKINGDIR/dev/build.sh
 		#sed -i '151,153 s/^/#/' $WORKINGDIR/dev/build.sh
 		sed -i '153 s/^/#/' $WORKINGDIR/dev/build.sh
+		sed -i "s/143=.*/143=BUILDNAME\=\"BUILDS\/oye\"/g" $WORKINGDIR/dev/build.sh
+		
+		
 		sed -i '52 s/^/\/\//' $WORKINGDIR/dev/CommonLibs/Logger.h
 		sed -i '52 s/^/\/\//' $WORKINGDIR/dev/openbts/CommonLibs/Logger.h
 		sed -i '52 s/^/\/\//' $WORKINGDIR/dev/smqueue/CommonLibs/Logger.h
@@ -140,19 +162,37 @@ do
 		sed -i -e 's/--upstart-only/ /g' $WORKINGDIR/dev/smqueue/debian/rules
 		sed -i -e 's/--upstart-only/ /g' $WORKINGDIR/dev/subscriberRegistry/debian/rules
 		sed -i -e 's/ourRtpTimestampJumpCallback,dialogId/ourRtpTimestampJumpCallback,(void*)\&dialogId/g' $WORKINGDIR/dev/openbts/SIP/SIPRtp.cpp
-		#todo : error OrtpLogFunc
+		#todo #pragma GCC diagnostic push
+		#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+		#pragma GCC diagnostic ignored "-Wimplicit-function-declaration"
+		 
+		#sudo apt-get install --reinstall build-essential
+
+		#sudo apt-get install --reinstall gcc
+		#sudo dpkg-reconfigure build-essential
+		#sudo dpkg-reconfigure gcc
+		
+		
+
 		echo -e "Patch   done!! \e[39m \e[49m.." 
 		;;
 	"Install OPENBTS")
-		apt --fix-broken install
-		apt install -f
-		rm -rf cd $WORKINGDIR/dev/BUILDS/*
-		cd $WORKINGDIR/dev/liba53/
-		make
-		make install
-		cd $WORKINGDIR/dev/
-		./build.sh RAD1
-		apt install -f
+		sayAndDo apt --fix-broken install
+		sayAndDo apt install -f
+		#sayAndDo update-alternatives --config gcc # update-alternatives --config g++
+		$WORKINGDIR/dev/asterisk/asterisk-11.7.0/contrib/scripts# ./install_prereq install
+	
+		sayAndDo rm -rf $WORKINGDIR/dev/BUILDS/*
+		sayAndDo cd $WORKINGDIR/dev/liba53/
+		sayAndDo make
+		sayAndDo make install
+		sed -i '759 s/^/\/\//' $WORKINGDIR/dev/openbts/SIP/SIP2Interface.cpp
+
+		sayAndDo cd $WORKINGDIR/dev/
+		#export CXX=g++-4.8 
+		#export CC=gcc-4.8
+		sayAndDo ./build.sh RAD1
+		sayAndDo apt install -f
 	;;
 	"Run OsmocomBB")
 		gnome-terminal -e ifconfig
